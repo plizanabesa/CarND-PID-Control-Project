@@ -1,0 +1,16 @@
+PID Project Reflection
+
+
+As seen in class, the P parameter is the proportional control and will tend to correct the desired state (zero cross track error in absence of motion drift). The problem of having a high P value is that the vehicle zig-zags towards its desired state. I started with a value of P around 0.08, but had to increase it to 0.12 because the car was unable to make the two angled curves after the bridge. However, with a higher P makes the vehicle oscillates harshly towards the desired state. 
+
+To compensate this increase in P, I increased the value of D paramater from 0.9 to 1.5. The D parameter relates to the difference in the error between two time steps, hence, it induces a smoothly motion towards the desired state, contrary to the zig-zag motion when only P is used. So an increase in P was compensated with an increase in D to make the can drive smoother. 
+
+For the I hyper-parameter, I started with a value of 0.001 (in the discussions forum some people suggested to use this order of magnitude, because of the time between two simulation steps). I is used to mitigate the effect of drift (a car tendency or bias to steer to one side) and is related to the integral or sum of errors along simulation steps. However, when using 0.001 the car turn sharply to the left, then inducing a proportional turn to the right and it went off track right away. I had to reduce it by two orders of magnitude (0.00025) so the car could go straight.
+
+At some stage, the car was able to passe the bridge, but it couldn't turn enough in the sharp turn after the bridge. I saw that the steering angle decomposition was made mainly by the D control, followed by I and then P. That's why I decided I needed more proportional control, and increased D as well to compensate. Then, the car was able to drive Ok along the track.
+
+To optimize the parameters, besides manual tuning, I implemented Twiddle optimization. However, I have to be sincere that I wasn't fully satissfied and confident of my implementation. First, I wasn't sure if it was working as intended and because I didn't notice a big difference when running the simulation without Twiddle. I would greatly appreciate it I could have feedback on the Twiddle implementation. I waited for 750 steps to run Twiddle or if the abs(CTE) was larger than 2.2.
+
+Also, I had some doubts regarding the i_error, since it kept increasing in the simulation. Twiddle would restart the value to zero, but a continous increase in i_error is indicative of drift? Since a balanced motion should offset positives and negative CTE when they are added.
+
+Finally, when using constant 0.3 acceleration I was unable to make the track. That is why I implemented a speed PID with a desired speed between 20 and 45 mph, depending on the angle of the steering control (higher steering less speed and vice versa). I must admit that I also wasn't completely happy with this speed PID implementation, because it makes the car brake recurrently. 
