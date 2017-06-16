@@ -99,6 +99,7 @@ int main()
             steer_value = 1;
         
           // Update speed throttle using speed PID
+          // Target speed between 20 and 45 mph, depending on the steering value.
           double target_speed = 25.*(1.-fabs(steer_value)) + 20.;
           speed_pid.UpdateError(speed - target_speed);
           double throttle_value = speed_pid.TotalError();
