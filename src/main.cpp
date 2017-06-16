@@ -4,6 +4,12 @@
 #include "PID.h"
 #include <math.h>
 
+/* References
+https://discussions.udacity.com/t/how-to-make-the-pid-output-normalized-to-be-within-1-1/252173/3
+https://discussions.udacity.com/t/twiddle-application-in-pid-controller/243427/9
+https://github.com/jendrikjoe/UdacityProjects/blob/master/src/main.cpp
+Q&A David Silver*/
+
 // for convenience
 using json = nlohmann::json;
 
@@ -31,11 +37,15 @@ std::string hasData(std::string s) {
 int main()
 {
   uWS::Hub h;
+  /*double current_time;
+  double previous_time;
+  double dt = 0;*/
+  PID steer_pid;
+  PID speed_pid;
+  steer_pid.Init(0.12, 0.00025, 1.5);
+  speed_pid.Init(.12 , 0.0001 , 0.8);
 
-  PID pid;
-  // TODO: Initialize the pid variable.
-
-  h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  h.onMessage([&steer_pid,&speed_pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -50,22 +60,66 @@ int main()
           double cte = std::stod(j[1]["cte"].get<std::string>());
           double speed = std::stod(j[1]["speed"].get<std::string>());
           double angle = std::stod(j[1]["steering_angle"].get<std::string>());
-          double steer_value;
-          /*
-          * TODO: Calcuate steering value here, remember the steering value is
-          * [-1, 1].
-          * NOTE: Feel free to play around with the throttle and speed. Maybe use
-          * another PID controller to control the speed!
-          */
+          double current_time = clock();
+          double clocks_per_sec = CLOCKS_PER_SEC;
+          bool use_steer_twiddle = true;
+          bool use_speed_twiddle = true;
+            
+          // If CTE exceeds value, restart simulator and Twiddle
+          if (std::abs(cte) > 2.2 && steer_pid.getNumSteps() > 100 && use_steer_twiddle){
+              std::cout << "Starting steer twiddle: " << std::endl;
+              steer_pid.Twiddle(1e8);
+          }
+            
+          if (std::abs(cte) > 2.2 && speed_pid.getNumSteps() > 250 && use_speed_twiddle){
+              std::cout << "Starting speed twiddle: " << std::endl;
+              speed_pid.Twiddle(1e8);
+          }
+
+          if (std::abs(cte) > 5){
+            steer_pid.Restart(ws);
+          }
+            
+          if (steer_pid.getNumSteps() > 750 && use_steer_twiddle){
+              std::cout << "Starting steer twiddle: " << std::endl;
+              steer_pid.Twiddle(1e8);
+          }
           
+          if (speed_pid.getNumSteps() > 750 && use_speed_twiddle){
+              std::cout << "Starting speed twiddle: " << std::endl;
+              speed_pid.Twiddle(1e8);
+          }
+            
+          // Update steer angle using steer PID
+          steer_pid.UpdateError(cte);
+          double steer_value = steer_pid.TotalError();
+          if (steer_value < -1)
+            steer_value = -1;
+          else if (steer_value > 1)
+            steer_value = 1;
+        
+          // Update speed throttle using speed PID
+          double target_speed = 25.*(1.-fabs(steer_value)) + 20.;
+          speed_pid.UpdateError(speed - target_speed);
+          double throttle_value = speed_pid.TotalError();
+          /*if (throttle_value < -1)
+            throttle_value = -1;
+          else if (throttle_value > 1)
+            throttle_value = 1;*/
+            
           // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+          std::cout << "CTE: " << cte << " Steering: " << steer_value
+            << " Speed: " << speed << " Target Speed: " << target_speed << " Throttle: " << throttle_value << std::endl;
+        
+          /*dt: " << current_time
+            << " Clocks: " << clocks_per_sec <<std::endl;*/
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.3;
+          msgJson["throttle"] = throttle_value;
+          //msgJson["throttle"] = 0.2;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
+          //std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {

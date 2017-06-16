@@ -1,3 +1,6 @@
+#include <vector>
+#include <uWS/uWS.h>
+
 #ifndef PID_H
 #define PID_H
 
@@ -9,6 +12,7 @@ public:
   double p_error;
   double i_error;
   double d_error;
+  double total_error;
 
   /*
   * Coefficients
@@ -16,6 +20,16 @@ public:
   double Kp;
   double Ki;
   double Kd;
+    
+  /*
+  * Twiddle Coefficients
+  */
+  double dp;
+  double di;
+  double dd;
+  double best_error;
+  int num_steps;
+  double norm_error;
 
   /*
   * Constructor
@@ -41,6 +55,18 @@ public:
   * Calculate the total PID error.
   */
   double TotalError();
+
+  /*
+  * Restart the simulator
+  */
+  void Restart(uWS::WebSocket<uWS::SERVER> ws);
+
+  int getNumSteps () { return num_steps;}
+    
+  /*
+  * Twiddle to optimize PID hyper-parameters
+  */
+  void Twiddle(double tolerance);
 };
 
 #endif /* PID_H */
